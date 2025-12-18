@@ -1,175 +1,135 @@
-// ===============================
-// VARIABLES Y ELEMENTOS DEL DOM
-// ===============================
 
-let birthdays = [];
-
-const nameInput = document.getElementById("nameInput");
-const dateInput = document.getElementById("dateInput");
-const categoryInput = document.getElementById("categoryInput");
-const reminderInput = document.getElementById("reminderInput");
-const addBtn = document.getElementById("addBtn");
-const birthdayList = document.getElementById("birthdayList");
-
-// ===============================
-// CLASE CUMPLEAÑOS
-// ===============================
-
-class Birthday {
-  constructor(id, name, date, category, reminder) {
-    this.id = id;
-    this.name = name;
-    this.date = date;
-    this.category = category;
-    this.reminder = reminder;
+(function () {
+  // Recuperar cumpleaños del storage o inicializar un array vacío (con control de errores)
+  let birthdays = [];
+  try {
+    const raw = localStorage.getItem("birthdays");
+    const parsed = raw ? JSON.parse(raw) : null;
+    birthdays = Array.isArray(parsed) ? parsed : [];
+  } catch (e) {
+    console.warn("No se pudo leer localStorage:", e);
+    birthdays = [];
   }
 
-  daysRemaining() {
-    const today = new Date();
-    const birthday = new Date(this.date);
-    birthday.setFullYear(today.getFullYear());
+  const nameInput = document.getElementById("nameInput");
+  const dateInput = document.getElementById("dateInput");
+  const addBtn = document.getElementById("addBtn");
+  const birthdayList = document.getElementById("birthdayList");
 
-    if (birthday < today) {
-      birthday.setFullYear(today.getFullYear() + 1);
+  // Validadores
+  const isValidName = (name) => {
+    if (!name) return false;
+    const trimmed = name.trim();
+    if (trimmed.length < 2 || trimmed.length > 50) return false;
+    // Permite letras Unicode, espacios y algunos signos comunes
+    return /^\p{L}[\p{L}\s'’\-]{0,49}$/u.test(trimmed);
+  };
+
+  const isValidDate = (dateStr) => {
+    if (!dateStr) return false;
+    // Formato YYYY-MM-DD
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) return false;
+    const d = new Date(dateStr);
+    if (Number.isNaN(d.getTime())) return false;
+    // Comprobar que partes coinciden (evita que "2023-02-31" se vuelva 2023-03-03)
+    const [y, m, day] = dateStr.split("-").map(Number);
+    return d.getUTCFullYear() === y && d.getUTCMonth() + 1 === m && d.getUTCDate() === day;
+  };
+
+  const isDuplicate = (name, date) =>
+    birthdays.some((b) => b.name.toLowerCase() === name.toLowerCase() && b.date === date);
+
+  // Guardar en storage
+  const saveToStorage = () => {
+    try {
+      localStorage.setItem("birthdays", JSON.stringify(birthdays));
+    } catch (e) {
+      console.warn("No se pudo guardar en localStorage:", e);
+      alert("Error al guardar. Revisa la configuración del navegador.");
+    }
+  };
+
+  // Agregar cumpleaños
+  const addBirthday = () => {
+    if (!nameInput || !dateInput) {
+      alert("Formulario no disponible en la página.");
+      return;
     }
 
-    const diff = birthday - today;
-    return Math.ceil(diff / (1000 * 60 * 60 * 24));
-  }
+    const name = nameInput.value.trim();
+    const date = dateInput.value;
 
-  age() {
-    const today = new Date();
-    const birthDate = new Date(this.date);
-    let age = today.getFullYear() - birthDate.getFullYear();
-
-    const hasHadBirthday =
-      today.getMonth() > birthDate.getMonth() ||
-      (today.getMonth() === birthDate.getMonth() &&
-        today.getDate() >= birthDate.getDate());
-
-    if (!hasHadBirthday) age--;
-    return age + 1;
-  }
-}
-
-// ===============================
-// STORAGE
-// ===============================
-
-const saveToStorage = () => {
-  localStorage.setItem("birthdays", JSON.stringify(birthdays));
-};
-
-const loadFromStorage = () => {
-  const data = JSON.parse(localStorage.getItem("birthdays"));
-  if (data) {
-    birthdays = data.map(item =>
-      new Birthday(
-        item.id,
-        item.name,
-        item.date,
-        item.category,
-        item.reminder
-      )
-    );
-  }
-};
-
-// ===============================
-// CARGA ASÍNCRONA DESDE JSON
-// ===============================
-
-fetch("./data/cumpleaños.json")
-  .then(res => res.json())
-  .then(data => {
-    if (localStorage.getItem("birthdays") === null) {
-      data.forEach(item => {
-        birthdays.push(
-          new Birthday(
-            item.id,
-            item.nombre,
-            item.fecha,
-            item.categoria,
-            item.recordatorio
-          )
-        );
-      });
-      saveToStorage();
+    if (!isValidName(name)) {
+      alert("Nombre inválido. Usa entre 2 y 50 letras; se permiten espacios y signos simples.");
+      return;
     }
-    loadFromStorage();
+
+    if (!isValidDate(date)) {
+      alert("Fecha inválida. Usa el formato YYYY-MM-DD y una fecha real.");
+      return;
+    }
+
+    if (isDuplicate(name, date)) {
+      alert("Ese cumpleaños ya está en la lista.");
+      return;
+    }
+
+    birthdays.push({ name, date });
+    saveToStorage();
     renderList();
-  });
 
-// ===============================
-// AGREGAR
-// ===============================
+    nameInput.value = "";
+    dateInput.value = "";
+    nameInput.focus();
+  };
 
-const addBirthday = () => {
-  const name = nameInput.value.trim();
-  const date = dateInput.value;
-  const category = categoryInput.value;
-  const reminder = reminderInput.checked;
+  // Eliminar por índice
+  const removeBirthday = (index) => {
+    if (index < 0 || index >= birthdays.length) return;
+    birthdays.splice(index, 1);
+    saveToStorage();
+    renderList();
+  };
 
-  if (!name || !date) {
-    Swal.fire("Error", "Completá todos los campos", "error");
-    return;
+  // Mostrar lista
+  const renderList = () => {
+    if (!birthdayList) return;
+    birthdayList.innerHTML = "";
+
+    birthdays.forEach((item, i) => {
+      const li = document.createElement("li");
+      li.textContent = `${item.name} - ${item.date}`;
+
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.textContent = "Eliminar";
+      btn.style.marginLeft = "8px";
+      btn.addEventListener("click", () => removeBirthday(i));
+
+      li.appendChild(btn);
+      birthdayList.appendChild(li);
+    });
+  };
+
+  // Eventos
+  if (addBtn) {
+    addBtn.addEventListener("click", addBirthday);
+  } else {
+    console.warn("addBtn no encontrado en el DOM.");
   }
 
-  birthdays.push(
-    new Birthday(Date.now(), name, date, category, reminder)
-  );
+  // Enter en inputs agrega
+  if (nameInput) {
+    nameInput.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") addBirthday();
+    });
+  }
+  if (dateInput) {
+    dateInput.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") addBirthday();
+    });
+  }
 
-  saveToStorage();
+  // Mostrar lista al cargar la página (recuperado del storage)
   renderList();
-
-  Swal.fire("🎉 Cumpleaños agregado");
-};
-
-// ===============================
-// ELIMINAR
-// ===============================
-
-const deleteBirthday = (id) => {
-  birthdays = birthdays.filter(b => b.id !== id);
-  saveToStorage();
-  renderList();
-};
-
-// ===============================
-// RENDER
-// ===============================
-
-const renderList = () => {
-  birthdayList.innerHTML = "";
-
-  birthdays.sort((a, b) => a.daysRemaining() - b.daysRemaining());
-
-  birthdays.forEach(item => {
-    const card = document.createElement("div");
-    card.className = "card";
-
-    let mensaje = Faltan ${item.daysRemaining()} días;
-    if (item.daysRemaining() === 0) mensaje = "🎂 ¡Es hoy!";
-
-    card.innerHTML = `
-      <h3>${item.name}</h3>
-      <p>Categoría: ${item.category}</p>
-      <p>Edad a cumplir: ${item.age()}</p>
-      <p>${mensaje}</p>
-      <p>Recordatorio: ${item.reminder ? "Sí" : "No"}</p>
-      <button onclick="deleteBirthday(${item.id})">Eliminar</button>
-    `;
-
-    birthdayList.appendChild(card);
-  });
-};
-
-// ===============================
-// EVENTOS
-// ===============================
-
-addBtn.addEventListener("click", addBirthday);
-
-loadFromStorage();
-renderList();
-
+})();
