@@ -4,7 +4,11 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Agenda de Cumpleaños</title>
+
   <link rel="stylesheet" href="style.css" />
+
+  <!-- Librería para reemplazar alert -->
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 </head>
 <body>
 
@@ -13,14 +17,36 @@
   <section class="form">
     <h2>Agregar cumpleaños</h2>
 
-    <input type="text" id="nameInput" placeholder="Nombre">
-    <input type="date" id="dateInput">
+    <input 
+      type="text" 
+      id="nameInput" 
+      placeholder="Nombre"
+      value="Juan Pérez"
+    >
+
+    <input 
+      type="date" 
+      id="dateInput"
+      value="2000-01-01"
+    >
+
+    <select id="categoryInput">
+      <option value="Familia">Familia</option>
+      <option value="Amigos" selected>Amigos</option>
+      <option value="Trabajo">Trabajo</option>
+    </select>
+
+    <label>
+      <input type="checkbox" id="reminderInput" checked>
+      Recordatorio
+    </label>
+
     <button id="addBtn">Agregar</button>
   </section>
 
   <section class="list">
     <h2>Lista de cumpleaños</h2>
-    <ul id="birthdayList"></ul>
+    <div id="birthdayList" class="cards"></div>
   </section>
 
   <script src="main.js" defer></script>

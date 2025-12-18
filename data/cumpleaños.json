@@ -1,0 +1,23 @@
+[
+  {
+    "id": 1,
+    "nombre": "María",
+    "fecha": "1996-03-12",
+    "categoria": "Familia",
+    "recordatorio": true
+  },
+  {
+    "id": 2,
+    "nombre": "Lucas",
+    "fecha": "1994-07-25",
+    "categoria": "Amigos",
+    "recordatorio": false
+  },
+  {
+    "id": 3,
+    "nombre": "Sofía",
+    "fecha": "2000-11-02",
+    "categoria": "Trabajo",
+    "recordatorio": true
+  }
+]
